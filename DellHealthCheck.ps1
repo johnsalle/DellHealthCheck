@@ -1,17 +1,17 @@
 #####################################################################################################################
-#																																													                          #
-#			Get-DellHealth - A PowerShell module to pull the Dell hardware health using SNMP. The module will detect			#
-#									whether connecting to an iDRAC (7 or above) or the OpenManage package on Windows					        #
-#																																													                          #
-#			Written By: John Salle																																		                    #
-#			Last Updated: 4/10/2017																																		                    #
-#																																													                          #
-#																																													                          #
-#			SNMP Library used from http://sharpsnmplib.codeplex.com/																					            #
-#			Get-SNMP adapted from https://vwiki.co.uk/SNMP_and_PowerShell																	                #
-#			(Both licensed under Open Source licenses)																										                #
-#																																												                            #
-#																																												                            #
+#														    #
+#	Get-DellHealth - A PowerShell module to pull the Dell hardware health using SNMP. The module will detect    #
+#			whether connecting to an iDRAC (7 or above) or the OpenManage package on Windows	    #
+#														    #
+#	Written By: John Salle											    #
+#	Last Updated: 4/10/2017											    #
+#														    #
+#														    #
+#	SNMP Library used from http://sharpsnmplib.codeplex.com/						    #
+#	Get-SNMP adapted from https://vwiki.co.uk/SNMP_and_PowerShell						    #
+#	(Both licensed under Open Source licenses)								    #
+#														    #
+#														    #
 #####################################################################################################################
 [cmdletbinding()]
 Param(
@@ -26,37 +26,37 @@ $WARNING = 4
 $CRITICAL = 5
 
 #Loads the Sharp SNMP Library
-#Can be downloaded from here (you only need the SharpSnmpLib.dll file): http://sharpsnmplib.codeplex.com/releases/view/79079
+#Can be downloaded from here (you only need the SharpSnmpLib.dll file):
+#http://sharpsnmplib.codeplex.com/releases/view/79079
 [reflection.assembly]::LoadFrom( (Resolve-Path $snmplibpath) ) | out-null
 
 
 function Get-DellHealthStatus() {
-		[cmdletbinding()]
-		Param(
-			[string]$ip,
-			[string]$comm = "public",
-			[int]$port=161, 
-			[int]$timeout=3000
-		)
+        [cmdletbinding()]
+	Param(
+		[string]$ip,
+		[string]$comm = "public",
+		[int]$port=161, 
+		[int]$timeout=3000
+	)
+	
+	$global:type = Get-HardwareType $ip $comm $timeout
+	
+	switch($type){
+	
+				1 { $globalSystemStatus = ".1.3.6.1.4.1.674.10892.1.300.10.1.4.1"	}
+				2 { $globalSystemStatus = "1.3.6.1.4.1.674.10892.5.4.200.10.1.2.1" }
+	}
+	
+	$snmpCheck = (Get-SNMP  $IP  $globalSystemStatus  $Comm $port $timeout).Data
+	switch ($snmpCheck){
 		
-		$global:type = Get-HardwareType $ip $comm $timeout
-		
-		switch($type){
-		
-					1 { $globalSystemStatus = ".1.3.6.1.4.1.674.10892.1.300.10.1.4.1"	}
-					2 { $globalSystemStatus = "1.3.6.1.4.1.674.10892.5.4.200.10.1.2.1" }
-		}
-		#		$VerbosePreference="Continue"
-		#		switch ((Get-SNMP -sIP $IP  -sOIDs "1.3.6.1.4.1.674.10892.5.4.200.10.1.52.1"  -Community $Comm -UDPPort $port).Data){
-		$snmpCheck = (Get-SNMP  $IP  $globalSystemStatus  $Comm $port $timeout).Data
-		switch ($snmpCheck){
-			
-				$OTHER	{Write-Host "WARNING: " $model}
-				$UNKNOWN {Write-Host "WARNING: " $model}
-				$OK	{Write-Host "OK: " $model}
-				$WARNING {Write-Host "WARNING: " $model}
-				$CRITICAL {Write-Host "CRITICAL: " $model}
-				default {Write-Host "Error: " $snmpCheck}
+		$OTHER	{Write-Host "WARNING: " $model}
+		$UNKNOWN {Write-Host "WARNING: " $model}
+		$OK	{Write-Host "OK: " $model}
+		$WARNING {Write-Host "WARNING: " $model}
+		$CRITICAL {Write-Host "CRITICAL: " $model}
+		default {Write-Host "Error: " $snmpCheck}
 			
 		}
 		
@@ -70,38 +70,38 @@ function Get-DellHealthStatus() {
 }
 function Get-DellStorageStatus([string]$ip,[string]$comm = "public", [int]$port=161){
 		
-	$states = @{
-			1 = "Unknown";
-			2 = "Ready";
-			3 = "Online";
-			4 = "Foreign";
-			5 = "Offline";
-			6 = "Blocked";
-			7 = "Failed";
-			8 = "Non-Raid";
-			9 = "Removed";
-			10 = "Read Only"
-	}	
+$states = @{
+	1 = "Unknown";
+	2 = "Ready";
+	3 = "Online";
+	4 = "Foreign";
+	5 = "Offline";
+	6 = "Blocked";
+	7 = "Failed";
+	8 = "Non-Raid";
+	9 = "Removed";
+	10 = "Read Only"
+}	
 	
-	$vstates = @{
-			1 = "Unknown";
-			2 = "Online";
-			3 = "Failed";
-			4 = "Degraded";
-	}
+$vstates = @{
+	1 = "Unknown";
+	2 = "Online";
+	3 = "Failed";
+	4 = "Degraded";
+}
 	
-	$raid = @{
-			1 = "None"; 
-			2 = "RAID-0";
-			3 = "RAID-1";
-			4 = "RAID-5";
-			5 = "RAID-6";
-			6 = "RAID-10";
-			7 = "RAID-50";
-			8 = "RAID-60";
-			9 = "Concatenated RAID 1"
-			10 = "Concatenated RAID 5"
-	}
+$raid = @{
+	1 = "None"; 
+	2 = "RAID-0";
+	3 = "RAID-1";
+	4 = "RAID-5";
+	5 = "RAID-6";
+	6 = "RAID-10";
+	7 = "RAID-50";
+	8 = "RAID-60";
+	9 = "Concatenated RAID 1"
+	10 = "Concatenated RAID 5"
+}
 		
 	
 	switch($type){
