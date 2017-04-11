@@ -11,6 +11,7 @@
 #	Get-SNMP adapted from https://vwiki.co.uk/SNMP_and_PowerShell						    #
 #	(Both licensed under Open Source licenses)								    #
 #														    #
+#	Short URL: https://goo.gl/uIVXKD		#
 #														    #
 #####################################################################################################################
 [cmdletbinding()]
