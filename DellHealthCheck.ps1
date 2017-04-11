@@ -225,6 +225,8 @@ function Get-HardwareType([string]$ip, [string]$comm = "public", [int]$port=161,
 
 }
 
+
+#Get SNMP
 function Get-SNMP ([string]$sIP, $sOIDs, [string]$Community = "public", [int]$UDPport = 161, [int]$TimeOut=3000) {
     # $OIDs can be a single OID string, or an array of OID strings
     # $TimeOut is in msec, 0 or -1 for infinite
