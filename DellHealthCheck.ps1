@@ -11,7 +11,8 @@
 #	Get-SNMP adapted from https://vwiki.co.uk/SNMP_and_PowerShell						    #
 #	(Both licensed under Open Source licenses)								    #
 #														    #
-#	Short URL: https://goo.gl/uIVXKD		#
+#	Short URL: https://goo.gl/uIVXKD							                    #
+#	(new-object Net.WebClient).DownloadString('https://goo.gl/tb38WQ') | iex				    #
 #														    #
 #####################################################################################################################
 [cmdletbinding()]
