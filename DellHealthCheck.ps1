@@ -15,10 +15,9 @@
 #	(new-object Net.WebClient).DownloadString('https://goo.gl/tb38WQ') | iex				    #
 #														    #
 #####################################################################################################################
-[cmdletbinding()]
-Param(
-	[string]$snmplibpath = ".\SharpSnmpLib.dll"
-)
+
+#Set path for the Sharp SNMP library DLL file. Change this if you want to store it somewhere else
+$snmplibpath = "C:\SharpSNMP\SharpSnmpLib.dll"
 
 #Set constant SNMP status variables
 $OTHER = 1
@@ -31,6 +30,9 @@ $CRITICAL = 5
 #Can be downloaded from here (you only need the SharpSnmpLib.dll file):
 #http://sharpsnmplib.codeplex.com/releases/view/79079
 [reflection.assembly]::LoadFrom( (Resolve-Path $snmplibpath) ) | out-null
+
+
+
 
 
 function Get-DellHealthStatus() {
@@ -46,33 +48,42 @@ function Get-DellHealthStatus() {
 	
 	switch($type){
 	
-				1 { $globalSystemStatus = ".1.3.6.1.4.1.674.10892.1.300.10.1.4.1"	}
-				2 { $globalSystemStatus = "1.3.6.1.4.1.674.10892.5.4.200.10.1.2.1" }
+				1 { $globalSystemStatus = ".1.3.6.1.4.1.674.10892.1.300.10.1.4.1"	
+						$systemVersion = ".1.3.6.1.4.1.674.10892.1.100.10.0"
+						
+						}
+				2 { $globalSystemStatus = "1.3.6.1.4.1.674.10892.5.4.200.10.1.2.1" 
+						$systemVersion = ".1.3.6.1.4.1.674.10892.5.1.1.2.0"
+				}
 	}
 	
 	$snmpCheck = (Get-SNMP  $IP  $globalSystemStatus  $Comm $port $timeout).Data
+	$systemType = (Get-SNMP $IP $systemVersion $Comm $port $timeout).Data
+	if($type -eq 1) { $systemType = "OMSA $systemType"}
 	switch ($snmpCheck){
 		
-		$OTHER	{Write-Host "WARNING: " $model}
-		$UNKNOWN {Write-Host "WARNING: " $model}
-		$OK	{Write-Host "OK: " $model}
-		$WARNING {Write-Host "WARNING: " $model}
-		$CRITICAL {Write-Host "CRITICAL: " $model}
-		default {Write-Host "Error: " $snmpCheck}
+		$OTHER	{Write-Host "WARNING:" $model "|" $systemType}
+		$UNKNOWN {Write-Host "WARNING:" $model "|" $systemType}
+		$OK	{Write-Host "OK:" $model "|" $systemType}
+		$WARNING {Write-Host "WARNING:" $model "|" $systemType}
+		$CRITICAL {Write-Host "CRITICAL:" $model "|" $systemType}
+		default {Write-Host "Error: " $snmpCheck "|" $systemType}
 			
 		}
 		
-		Write-Verbose "Verbose Output" 
 		if($PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent){
 			Get-DellStorageStatus $IP $Comm
+			Get-DellBatteryStatus $IP $Comm
 		
 		
 		}
 		
 }
-function Get-DellStorageStatus([string]$ip,[string]$comm = "public", [int]$port=161){
+function Get-DellStorageStatus([string]$ip,[string]$comm = "public", [int]$port=161, [int]$timeout=3000){
 		
-$states = @{
+		Write-Verbose "-----Storage Status-----"
+		
+$idracstates = @{
 	1 = "Unknown";
 	2 = "Ready";
 	3 = "Online";
@@ -85,14 +96,14 @@ $states = @{
 	10 = "Read Only"
 }	
 	
-$vstates = @{
+$idracvstates = @{
 	1 = "Unknown";
 	2 = "Online";
 	3 = "Failed";
 	4 = "Degraded";
 }
 	
-$raid = @{
+$idracraid = @{
 	1 = "None"; 
 	2 = "RAID-0";
 	3 = "RAID-1";
@@ -105,12 +116,74 @@ $raid = @{
 	10 = "Concatenated RAID 5"
 }
 		
+$omsastates = @{
+	0 = "Unknown";
+	1 = "Ready";
+	2 = "Failed";
+	3 = "Online";
+	4 = "Offline";
+	6 = "Degraded";
+	7 = "Recovering";
+	11 = "Removed";
+	13 = "Non-RAID";
+	14 = "Not Ready";
+	15 = "Resynching";
+	22 = "Replacing";
+	23 = "Spinning Down";
+	24 = "Rebuilding";
+	25 = "No Media";
+	26 = "Formatting";
+	28 = "Diagnostics";
+	34 = "Predictive Failure";
+	35 = "Initializing";
+	39 = "Foreign";
+	40 = "Clear";
+	41 = "Unsupported";
+	53 = "Incompatible";
+	56 = "Read Only";
+	
+}		
+
+$omsavstates = @{
+	0 = "Unknown";
+	1 = "Ready";
+	2 = "Failed";
+	3 = "Online";
+	4 = "Offline";
+	6 = "Degraded";
+	15 = "Resynching";
+	16 = "Regenerating";
+	24 = "Rebuilding";
+	26 = "Formatting";
+	32 = "Reconstructing";
+	35 = "Initializing";
+	36 = "Background Initialization";
+	38 = "Resynching Paused";
+	52 = "Permanently Degraded";
+	54 = "Degraded Redundancy";
+}		
+
+$omsaraid = @{
+	1 = "Concatenated";
+	2 = "RAID-0";
+	3 = "RAID-1";
+	7 = "RAID-5";
+	8 = "RAID-6";
+	10 = "RAID-10";
+	12 = "RAID-50";
+	19 = "Concatenated RAID-1";
+	24 = "RAID-60";
+	25 = "CacheCade";
+
+}
+		
 	
 	switch($type){
 		
 					1 { $enclosureDriveCount = ""
 							$physicalDiskNumber = ".1.3.6.1.4.1.674.10893.1.20.130.4.1.1"
 							$physicalDiskName = ".1.3.6.1.4.1.674.10893.1.20.130.4.1.2"
+							$physicalDiskProductID = "1.3.6.1.4.1.674.10893.1.20.130.4.1.6"
 							$physicalDiskState = ".1.3.6.1.4.1.674.10893.1.20.130.4.1.4"
 							$physicalDiskCapacityInMB = ".1.3.6.1.4.1.674.10893.1.20.130.4.1.11"
 							$virtualDiskNumber = ".1.3.6.1.4.1.674.10893.1.20.140.1.1.1"
@@ -118,10 +191,12 @@ $raid = @{
 							$virtualDiskState = ".1.3.6.1.4.1.674.10893.1.20.140.1.1.4"
 							$virtualDiskLayout = ".1.3.6.1.4.1.674.10893.1.20.140.1.1.13"
 							$virtualDiskSizeInMB = ".1.3.6.1.4.1.674.10893.1.20.140.1.1.6"
+							$states = $omsastates ; $vstates = $omsavstates ; $raid = $omsaraid #Sets the appropriate tables for the type of connection
 							}
 					2 { $enclosureDriveCount = ".1.3.6.1.4.1.674.10892.5.5.1.20.130.3.1.31.1"
 							$physicalDiskNumber = ".1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.1"
 							$physicalDiskName = ".1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.2"
+							$physicalDiskProductID = ".1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.6"
 							$physicalDiskState = ".1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.4"
 							$physicalDiskCapacityInMB = ".1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.11"
 							$virtualDiskNumber = ".1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.1"
@@ -129,7 +204,7 @@ $raid = @{
 							$virtualDiskState = ".1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.4"
 							$virtualDiskLayout = ".1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.13"
 							$virtualDiskSizeInMB = ".1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.6"
-							
+							$states = $idracstates ; $vstates = $idracvstates ; $raid = $idracraid #Sets the appropriate tables for the type of connection
 						}
 						
 		}
@@ -151,9 +226,10 @@ $raid = @{
 		Write-Verbose "Number of Physical Drives: $pDiskCount"
 		for ($i = 1; $i -le $pDiskCount; $i++){ #Parse through each drive
 				$diskName = (Get-SNMP $ip "$physicalDiskName.$i" $comm).Data
+				$diskProductID = (Get-SNMP $ip "$physicalDiskProductID.$i" $comm).Data
 				$diskStatus = (Get-SNMP $ip "$physicalDiskState.$i" $comm).Data
 				$diskCapacityInMB = (Get-SNMP $ip "$physicalDiskCapacityInMB.$i" $comm).Data
-				Write-Verbose "$diskName | Status: $($states.Item([Int32]$diskStatus)) | Capacity (MB): $diskCapacityInMB"
+				Write-Verbose "$diskName | Status: $($states.Item([Int32]$diskStatus)) | Capacity (GB): $($diskCapacityInMB/1024) | Model: $diskProductID"
 							
 		}
 		
@@ -176,17 +252,95 @@ $raid = @{
 				$vdiskStatus = (Get-SNMP $ip "$virtualDiskState.$l" $comm).Data
 				$vdiskCapacityInMB = (Get-SNMP $ip "$virtualDiskSizeInMB.$l" $comm).Data
 				$vdiskLayout = (Get-SNMP $ip "$virtualDiskLayout.$l" $comm).Data
-				Write-Verbose "Virtual Disk: $vdiskName | Status: $($vstates.Item([Int32]$vdiskStatus)) | RAID: $($raid.Item([Int32]$vdiskLayout)) | Capacity (MB): $vdiskCapacityInMB"
+				Write-Verbose "Virtual Disk: $vdiskName | Status: $($vstates.Item([Int32]$vdiskStatus)) | $($raid.Item([Int32]$vdiskLayout)) | Capacity (GB): $($vdiskCapacityInMB/1024)"
 							
 		}
 		
 		Write-Verbose ""
+		
+
+}
+function Get-DellMemoryStatus([string]$ip,[string]$comm = "public", [int]$port=161, [int]$timeout=3000){
+}
+function Get-DellFanStatus([string]$ip,[string]$comm = "public", [int]$port=161, [int]$timeout=3000){
+}
+function Get-DellPowerStatus([string]$ip,[string]$comm = "public", [int]$port=161, [int]$timeout=3000){
+}
+function Get-DellCPUStatus([string]$ip,[string]$comm = "public", [int]$port=161, [int]$timeout=3000){
+}
+function Get-DellTempStatus([string]$ip,[string]$comm = "public", [int]$port=161, [int]$timeout=3000){
+}
+function Get-DellBatteryStatus([string]$ip,[string]$comm = "public", [int]$port=161, [int]$timeout=3000){
+
+	Write-Verbose "-----Battery Status-----"
+
+$omsabattstates = @{
+	0 = "Unknown";
+	1 = "Ready";
+	2 = "Failed";
+	6 = "Degraded";
+	7 = "Reconditioning";
+	9 = "High";
+	10 = "Power Low";
+	12 = "Charging";
+	21 = "Missing";
+	36 = "Learning";
+		
+}
+
+$idracbattstates = @{
+	1 = "Unknown";
+	2 = "Ready";
+	3 = "Failed";
+	4 = "Degraded";
+	5 = "Missing";
+	6 = "Charging";
+	7 = "Below Threshold";
+}
+
+		switch($type){
+				
+							1 { 
+									$batteryState = ".1.3.6.1.4.1.674.10893.1.20.130.15.1.4"
+									$batteryDisplayName = ".1.3.6.1.4.1.674.10892.1.20.130.15.1.21.1"
+									$battstates = $omsabattstates
+									}
+							2 { 
+									$batteryState = ".1.3.6.1.4.1.674.10892.5.5.1.20.130.15.1.4"
+									$batteryDisplayName = ".1.3.6.1.4.1.674.10892.5.5.1.20.130.15.1.21.1"
+									$battstates = $idracbattstates
+								}
+								
+				}
+		$j=0
+		Do {
+			Try {
+				$j=$j+1
+				$snmp_out =  (Get-SNMP $IP "$batteryState.$j" $comm $port).Data
+			}
+			Catch {
+				$snmp_out = ""
+			}
+			
+		} Until(($snmp_out -contains "NoSuchInstance") -or ([string]::IsNullOrEmpty($snmp_out)))
+
+		if($j -eq 1){
+			Write-Verbose "No Controller Battery Detected"
+		}
+		Else{
+				for ($l = 1; $l -le $($j-1); $l++){ #Parse through each battery
+						$battName = (Get-SNMP $ip "$batteryDisplayName" $comm).Data
+						$battStatus = (Get-SNMP $ip "$batteryState.1" $comm).Data
+						
+						Write-Verbose "$battName | Status: $($battstates.Item([Int32]$battStatus))"
+				}
+		}
+		
 		Write-Verbose ""
 
 }
-
-
-
+function Get-DellIntrusionStatus([string]$ip,[string]$comm = "public", [int]$port=161, [int]$timeout=3000){
+}
 function Get-HardwareType([string]$ip, [string]$comm = "public", [int]$port=161, [int]$timeout=3000){
 		
 		#
