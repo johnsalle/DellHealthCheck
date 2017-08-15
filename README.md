@@ -7,7 +7,7 @@ Download the tritonmate_8.0_bin.zip file here (v8.0) http://sharpsnmplib.codeple
 From that zip file, extract the SharpSNMPLib.dll file and place it in the directory above.
 
 # Usage
-(new-object Net.WebClient).DownloadString('https://goo.gl/uIVXKD') | iex ; Get-DellHealthStatus -IP <IP Address> -Comm <Community String>
+(new-object Net.WebClient).DownloadString('https://goo.gl/uIVXKD') | iex ; Get-DellHealthStatus -IP {IP Address} -Comm {Community String}
 
 This will show a single line reporting the overall status of the hardware. 'OK' means everything is fine, and 'Warning' or 'Critical' indicate an issue that needs to be looked at. 
 
